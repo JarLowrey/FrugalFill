@@ -1,7 +1,8 @@
-<% content_for :head do %>
-    <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=<%= data.api_key['map'] %>&callback=initialize&libraries=places">
-    </script>
+    <% content_for :head do %>
+        <script
+        src="https://maps.googleapis.com/maps/api/js?key=<%= data.api_key['map'] %>&libraries=places">
+        </script>
+    <%= javascript_include_tag "RouteBoxer_packed" %>
 <% end %>
 
 <div id="map"></div>
