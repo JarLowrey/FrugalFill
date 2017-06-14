@@ -1,0 +1,13 @@
+#map {
+    height:100%;
+    width: 100%;
+}
+input{
+    position: absolute;
+    right: 0;
+    top: 50px;
+    transform: translate(-50%,-50%);
+}
+#end{
+    transform: translate(-50%,100%);
+}

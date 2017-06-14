@@ -1,3 +1,5 @@
+<% pg_name = current_page.path.split(".")[0] %>
+
 <!doctype html>
 <html>
   <head>
@@ -7,10 +9,15 @@
           content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <!-- Use the title from a page's frontmatter if it has one -->
     <title><%= current_page.data.title || "Middleman" %></title>
-    <%= stylesheet_link_tag "site" %>
-    <%= javascript_include_tag "site" %>
+
+    <%= stylesheet_link_tag "site", pg_name %>
+    <%= javascript_include_tag "site", pg_name %>
+
+    <%= # child layouts can inject code into the head via using content_for :head
+    yield_content :head
+    %>
   </head>
-  <body>
+  <body class="<%= page_classes %>">
     <%= yield %>
   </body>
 </html>

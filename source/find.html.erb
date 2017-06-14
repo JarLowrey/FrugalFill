@@ -1,0 +1,10 @@
+<% content_for :head do %>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=<%= data.api_key['map'] %>&callback=initialize&libraries=places">
+    </script>
+<% end %>
+
+<div id="map"></div>
+
+<input id="start" type="text">
+<input id="end" type="text">
