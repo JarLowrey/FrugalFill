@@ -119,14 +119,15 @@ function getDirs() {
             } else if (status == google.maps.DirectionsStatus.ZERO_RESULTS) {
                 alert("no results");
             }
-            console.log(result, status);
         });
 }
 
 async function findGas() {
     let path = dirRenderer.getDirections().routes[0].overview_path;
     bounds = rb.box(path, search_dist_from_route);
-    console.log(await searchBounds(bounds));
+    let places = await searchBounds(bounds);
+    let placeDetails = await getPlaceDetails(places);
+    console.log(placeDetails)
 }
 
 
@@ -136,19 +137,20 @@ async function findGas() {
 * avg of 10 a second that is the max request you can make on google
 */
 
-async function searchBounds(bnds) {
+async function searchBounds(bnds, keyword = '', type = 'gas_station') {
     let promises = [];
 
     //perform searches inside the passed-in bounds to find places near the route
     for (let i = 0; i < bnds.length; i++) {
-        //timeout to ensure not too many at once
-        setTimeout(() => {
-            // Perform search on the bound and save the result
-            // https://developers.google.com/maps/documentation/javascript/places#radar_search_requests
-            let search = new Promise((resolve, reject) => {
+        let bound = bnds[i];
+        // Perform search on the bound and save the result
+        // https://developers.google.com/maps/documentation/javascript/places#radar_search_requests
+        let search = new Promise((resolve, reject) => {
+            setTimeout(() => {        //timeout to ensure not too many at once (rate limited)
                 placeService.radarSearch({
-                    bounds: bnds[i],
-                    type: 'gas_station'
+                    bounds: bound,
+                    type: type,
+                    keyword: keyword
                 }, (results, status) => { //callback for search result
                     if (status === google.maps.places.PlacesServiceStatus.OK) {
                         resolve(results);
@@ -156,30 +158,54 @@ async function searchBounds(bnds) {
                         reject(status);
                     }
                 });
-            });
+            }, 400 * i);
+        });
 
-            promises.push(search)
-        }, 400 * i);
+        promises.push(search)
     }
 
     //wait for all the searches to finish
-    console.log("timeout ended", promises)
-    return Promise.all(promises).then(function(val){
-        console.log(val)
+    return Promise.all(promises)
+        .then(searches_result => {
+            //remove duplicate places. This can occur if bounds overlap
+            let nearby_places = new Set();
+            for (let search_results of searches_result) {
+                for (let result of search_results) {
+                    nearby_places.add(result.place_id);
+                }
+            }
+
+            return nearby_places;
+        });
+}
+
+async function getPlaceDetails(places) {
+    let details = [];
+
+    for (let place_id of places) {
+        //check if place has already been cached locally
+        if (localStorage[place_id]) {
+            let placeDetails = JSON.parse(localStorage[place_id]);
+            details.push(placeDetails);
+        }
+        //place is not cached, request details from google
+        else {
+            let placeDetails = new Promise((resolve, reject) => {
+                placeService.getDetails({ // https://developers.google.com/maps/documentation/javascript/places#place_details_requests
+                    placeId: place_id
+                }, (place, status) => {
+                    //cache the place and resolve the promise
+                    if (status == google.maps.places.PlacesServiceStatus.OK) {
+                        localStorage[place_id] = JSON.stringify(place);
+                        resolve(place);
+                    } else {
+                        reject(status);
+                    }
+                });
+            });
+            details.push(placeDetails);
+        }
     }
-    //     searches_result => {
-    //     console.log(searches_result)
-    //     let unique_places = {};
-    //     for (let search_results in searches_result) {
-    //         //remove duplicate places
-    //         for (let result in search_results) {
-    //             console.log(result);
-    //             if (!(result.place_id in establishments)) {
-    //                 unique_places[result.place_id] = "";
-    //             }
-    //         }
-    //     }
-    //     return searches_result;
-    // }
-    );
+
+    return Promise.all(details);
 }
